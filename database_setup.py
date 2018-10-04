@@ -27,6 +27,16 @@ class Item(Base):
     catagory_id = Column(Integer, ForeignKey('catagory.id'))
     catagory = relationship(Catagory)
     date = Column(TIMESTAMP, default=datetime.utcnow, nullable=False)
+
+
+    @property
+    def serialize(self):
+        #Returns object data in easily serializable format
+        return {
+            'name'  : self.name,
+            'description'   : self.description,
+            'id'    : self.id,
+        }
     
  
 engine = create_engine('sqlite:///catalogproject.db')

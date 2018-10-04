@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 app = Flask(__name__)
 
 # import CRUD Operations from Lesson 1 ##
@@ -12,70 +12,77 @@ Base.metadata.bind = engine
 DBSession = sessionmaker(bind=engine)
 session = DBSession()
 
+
+# Making an API Endpoint (GET Request)
+@app.route('/catagories/<int:catagory_id>/JSON')
+def catagoryItemsJSON(catagory_id):
+    catagory = session.query(Catagory).filter_by(id = catagory_id).all()
+    items = session.query(Item).filter_by(catagory_id = catagory_id).all()
+    return jsonify(Items = [i.serialize for i in items])
+
 # Decorator to call function if URL used
 @app.route('/')
 @app.route('/catagories/')
 def catagoryList():
-    catagory = session.query(Catagory).all()
-    items = session.query(Item).all()
-    return render_template('homepage.html', catagory = catagory, items = items)
-    # output = ''
-    # for i in catagory:
-    #     output += i.name
-    #     output += '</br>'
+    catagories = session.query(Catagory).all()
+    return render_template('homepage.html', catagories = catagories)
 
-    # return output
-    
-# Decorator for routing individual Items
-@app.route('/catagories/<int:catagory_id>/<int:item_id>/')
-def catagoryItem(catagory_id, item_id):
-    catagory = session.query(Catagory).filter_by(catagory_id = catagory.id).one()
-    items = session.query(Item).filter_by(catagory_id = catagory.id)
-    return render_template('catalog.html', catagory = catagory, items = items)
+# Decorator for routing to All Items in Catagory
+@app.route('/catagories/<int:catagory_id>/')
+def catagoryItems(catagory_id):
+    catagory = session.query(Catagory).filter_by(id = catagory_id).all()
+    items = session.query(Item).filter_by(catagory_id = catagory_id).all()
+    return render_template('catalogitems.html', items = items, catagory = catagory, catagory_id = catagory_id)
+
+
+# Decorator for routing individual Item Descriptions
+@app.route('/catagories/<int:catagory_id>/<int:item_id>/<string:description>')
+def itemDescription(catagory_id, item_id, description):
+    items = session.query(Item).filter_by(catagory_id = catagory_id, id = item_id)
+    return render_template('catalog.html', items = items)
 
 # Add new catagoryItem function
-@app.route('/catagories/<int:catagory_id>/<int:item_id>/new/', methods = ['GET', 'POST'])
-def newCatagoryItem(catagory_id, item_id):
+@app.route('/catagories/<int:catagory_id>/new/', methods = ['GET', 'POST'])
+def newCatagoryItem(catagory_id):
     if request.method == 'POST':
-        newItem = Item(name = request.form['name'], description = request.form['description'], catagory_id = catagory_id, item_id = item_id)
+        newItem = Item(name = request.form['name'], description = request.form['description'], catagory_id = catagory_id)
         session.add(newItem)
         session.commit()
-        return redirect(url_for('catagoryItem', catagory_id = catagory_id, item_id = item_id))
-
+        flash("New Item Successfuly Created !")
+        return redirect(url_for('catagoryItems', catagory_id = catagory_id))
     else:
         return render_template('newitem.html', catagory_id = catagory_id)
 
-# Decorator for Viewing Item Description
-@app.route('/catagories/<int:catagory_id>/<int:item_description>')
-def itemDescription(catagory_id, item_description):
-    description = session.query(Item).filter_by(catagory_id = catagory_id).all()
-    output = ''
-    for i in description:
-         output += i.description
-    return output
 
 # Update catagoryItem function
 @app.route('/catagories/<int:catagory_id>/<int:item_id>/update/', methods = ['GET', 'POST'])
 def updateCatagoryItem(catagory_id, item_id):
-    updatedItem = session.query(Item).filter_by (catagory_id = catagory_id).one()
+    updatedItem = session.query(Item).filter_by(catagory_id = catagory_id, id = item_id).one()
     if request.method == 'POST':
-        if request.form['name', 'description']:
-            updatedItem.name = request.form['name']
-            updatedItem.description = request.form['description']
-        session.add(updatedItem)
+        updateItem = Item(name = request.form['name'], description = request.form['description'], catagory_id = catagory_id)
+        session.add(updateItem)
         session.commit()
-        return redirect(url_for('itemDescription', catagory_id = catagory_id))
+        flash("New Item Successfuly Updated !")
+        return redirect(url_for('catagoryItems', catagory_id = catagory_id))
     else:
-        return render_template('updateitem.html', catagory_id = catagory_id, item_id = item_id)
+        return render_template('updateitem.html', catagory_id = catagory_id, i = updatedItem)
 
 
 # Delete catagoryItem function
-@app.route('/catagories/<int:catagory_id>/<int:item_id>/delete/')
+@app.route('/catagories/<int:catagory_id>/<int:item_id>/delete/', methods = ['GET','POST'])
 def deleteCatagoryItem(catagory_id, item_id):
-    return "page to delete a Item"
+    deleteItem = session.query(Item).filter_by(catagory_id = catagory_id, id = item_id).one()
+    if request.method == 'POST':
+        session.delete(deleteItem)
+        session.commit()
+        flash("New Item Successfuly Deleted !")
+        return redirect(url_for('catagoryItems', catagory_id = catagory_id))
+    else:
+        return (render_template('deleteitem.html', removename = deleteItem.name, id = deleteItem.id, catagory_id = deleteItem.catagory_id))
 
 # Run Server in Debug Mode
 if __name__ == '__main__':
+    app.secret_key = 'super_secret_key'
     app.debug = True
     app.run(host = '0.0.0.0', port = 8000, threaded = False)
 
