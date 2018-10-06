@@ -1,5 +1,9 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
+
+<title> Delete Item Page </title>
+
 	<link rel=stylesheet type=text/css href="{{ url_for('static', filename='styles.css') }}">
 	</head>
 <body>
@@ -8,7 +12,7 @@
 
 <form action="{{url_for('deleteCatagoryItem', catagory_id = catagory_id, item_id = id)}}" method = 'POST'>
 
-<textarea readonly> <input type ='text' size='80' name='name' placeholder = '{{ removename }}' ></dd>
+<input type = 'text' size='80' name='name' placeholder = '{{ removename }}' ></dd>
 <input type='submit' value='Delete'>
 
 </form>
