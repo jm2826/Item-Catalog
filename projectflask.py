@@ -1,23 +1,32 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import (Flask,
+                   render_template,
+                   request, redirect,
+                   jsonify,
+                   url_for,
+                   flash)
 from flask import session as login_session
-import random, string
-app = Flask(__name__)
-
-# import CRUD Operations from Lesson 1 ##
-from database_setup import Base, Catagory, Item
-from sqlalchemy import create_engine, desc
-from sqlalchemy.orm import sessionmaker
-
+import random
+import string
 from oauth2client.client import flow_from_clientsecrets
 from oauth2client.client import FlowExchangeError
 import httplib2
 import json
 from flask import make_response
 import requests
+from functools import wraps
+
+# import CRUD Operations from Lesson 1 ##
+from database_setup import Base, Catagory, Item
+from sqlalchemy import create_engine, desc
+from sqlalchemy.orm import sessionmaker
+
+app = Flask(__name__)
+
 
 CLIENT_ID = json.loads(
     open('client_secrets.json', 'r').read())['web']['client_id']
 APPLICATION_NAME = "Catalog App"
+
 
 # Connect to Database and create database session
 engine = create_engine('sqlite:///catalogproject.db')
@@ -89,8 +98,8 @@ def gconnect():
     stored_access_token = login_session.get('access_token')
     stored_gplus_id = login_session.get('gplus_id')
     if stored_access_token is not None and gplus_id == stored_gplus_id:
-        response = make_response(json.dumps('Current user is already connected.'),
-                                 200)
+        response = make_response(json.dumps('Current user\
+                                 is already connected.'), 200)
         response.headers['Content-Type'] = 'application/json'
         return response
 
@@ -114,11 +123,11 @@ def gconnect():
     output += '!</h1>'
     output += '<img src="'
     output += login_session['picture']
-    output += ' " style = "width: 300px; height: 300px;border-radius: 150px;-webkit-border-radius: 150px;-moz-border-radius: 150px;"> '
-    flash("you are now logged in as %s" % login_session['username'])
+    output += ' " style = "width: 300px; height: 300px;border-radius: 150px;\
+                -webkit-border-radius: 150px;-moz-border-radius: 150px;"> '
+    flash("you are now logged in as %s" % login_session['email'])
     print "done!"
     return output
-
 
 
 # Making an API Endpoint (GET Request)
@@ -127,6 +136,17 @@ def catagoryItemsJSON(catagory_id):
     catagory = session.query(Catagory).filter_by(id = catagory_id).all()
     items = session.query(Item).filter_by(catagory_id = catagory_id).all()
     return jsonify(Items = [i.serialize for i in items])
+
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'email' in login_session:
+            return f(*args, **kwargs)
+        else:
+            flash("You are not allowed to access there")
+            return redirect('/login')
+    return decorated_function
 
 # Decorator to call function if URL used
 @app.route('/')
@@ -151,6 +171,7 @@ def itemDescription(catagory_id, item_id, description):
 
 # Add new catagoryItem function
 @app.route('/catagories/<int:catagory_id>/new/', methods = ['GET', 'POST'])
+@login_required
 def newCatagoryItem(catagory_id):
     if request.method == 'POST':
         newItem = Item(name = request.form['name'], description = request.form['description'], catagory_id = catagory_id)
@@ -164,6 +185,7 @@ def newCatagoryItem(catagory_id):
 
 # Update catagoryItem function
 @app.route('/catagories/<int:catagory_id>/<int:item_id>/update/', methods = ['GET', 'POST'])
+@login_required
 def updateCatagoryItem(catagory_id, item_id):
     updatedItem = session.query(Item).filter_by(catagory_id = catagory_id, id = item_id).one()
     if request.method == 'POST':
@@ -178,6 +200,7 @@ def updateCatagoryItem(catagory_id, item_id):
 
 # Delete catagoryItem function
 @app.route('/catagories/<int:catagory_id>/<int:item_id>/delete/', methods = ['GET','POST'])
+@login_required
 def deleteCatagoryItem(catagory_id, item_id):
     deleteItem = session.query(Item).filter_by(catagory_id = catagory_id, id = item_id).one()
     if request.method == 'POST':
@@ -193,7 +216,4 @@ if __name__ == '__main__':
     app.secret_key = 'super_secret_key'
     app.debug = True
     app.run(host = '0.0.0.0', port = 8000, threaded = False)
-
-
-
 
