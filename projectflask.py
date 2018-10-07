@@ -36,13 +36,12 @@ DBSession = sessionmaker(bind=engine)
 session = DBSession()
 
 
-# Create anti-forgery state token
+# Create anti-forgery state token. Login utton shows for google+ login
 @app.route('/login')
 def showLogin():
     state = ''.join(random.choice(string.ascii_uppercase + string.digits)
                     for x in xrange(32))
     login_session['state'] = state
-    # return "The current session state is %s" % login_session['state']
     return render_template('login.html', STATE=state)
 
 
@@ -116,10 +115,11 @@ def gconnect():
 
     login_session['picture'] = data['picture']
     login_session['email'] = data['email']
+    login_session['username'] = data['name']
 
     output = ''
     output += '<h1>Welcome, '
-    output += login_session['email']
+    output += login_session['username']
     output += '!</h1>'
     output += '<img src="'
     output += login_session['picture']
@@ -128,6 +128,42 @@ def gconnect():
     flash("you are now logged in as %s" % login_session['email'])
     print "done!"
     return output
+
+
+# Disconnect - Revoke current user token and reset login_session.
+@app.route('/gdisconnect')
+def gdisconnect():
+    access_token = login_session.get('access_token')
+    # Only disconnect a connected user
+    if access_token is None:
+        print 'Access Token is None'
+        response = make_response(json.dumps('Current user not connected.')
+                                            , 401)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+    print 'In gdisconnect access token is %s', access_token
+    print 'Username is: '
+    print login_session['email']
+    url = 'https://accounts.google.com/o/oauth2/revoke?token=%s' % login_session['access_token']
+    h = httplib2.Http()
+    result = h.request(url, 'GET')[0]
+    print 'result is'
+    print result
+    if result['status'] == '200':
+        # Reset the user's session.
+        del login_session['access_token']
+        del login_session['gplus_id']
+        del login_session['username']
+        del login_session['email']
+        del login_session['picture']
+        response = make_response(json.dumps('Successfully disconnected'), 200)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+    else:
+        # For whatever reason, the given token invalid.
+        response = make_response(json.dumps('Failed to revoke token for\
+                                             given user.', 400))
+        return response
 
 
 # Making an API Endpoint (GET Request)
@@ -141,7 +177,7 @@ def catagoryItemsJSON(catagory_id):
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'email' in login_session:
+        if 'email' not in login_session:
             return f(*args, **kwargs)
         else:
             flash("You are not allowed to access there")
@@ -191,19 +227,19 @@ def newCatagoryItem(catagory_id):
 
 
 # Update catagoryItem function
+@login_required
 @app.route('/catagories/<int:catagory_id>/<int:item_id>/update/',
            methods=['GET', 'POST'])
-@login_required
 def updateCatagoryItem(catagory_id, item_id):
     updatedItem = session.query(Item).filter_by(catagory_id=catagory_id,
                                                 id=item_id).one()
     if request.method == 'POST':
-        updateItem = Item(name=request.form['name'],
+        updatedItem = Item(name=request.form['name'],
                           description=request.form['description'],
                           catagory_id=catagory_id)
-        session.add(updateItem)
+        session.add(updatedItem)
         session.commit()
-        flash("New Item Successfuly Updated !")
+        flash("New Item Successfully Updated !")
         return redirect(url_for('catagoryItems',
                                 catagory_id=catagory_id))
     else:
@@ -213,9 +249,9 @@ def updateCatagoryItem(catagory_id, item_id):
 
 
 # Delete catagoryItem function
+@login_required
 @app.route('/catagories/<int:catagory_id>/<int:item_id>/delete/',
            methods=['GET', 'POST'])
-@login_required
 def deleteCatagoryItem(catagory_id, item_id):
     deleteItem = session.query(Item).filter_by(catagory_id=catagory_id,
                                                id=item_id).one()
