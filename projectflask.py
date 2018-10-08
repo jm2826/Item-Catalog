@@ -212,8 +212,9 @@ def itemDescription(catagory_id, item_id, description):
 
 # Add new catagoryItem function
 @app.route('/catagories/<int:catagory_id>/new/', methods=['GET', 'POST'])
-@login_required
 def newCatagoryItem(catagory_id):
+    if 'username' not in login_session:
+        return redirect('/login')
     if request.method == 'POST':
         newItem = Item(name=request.form['name'],
                        description=request.form['description'],
@@ -227,12 +228,13 @@ def newCatagoryItem(catagory_id):
 
 
 # Update catagoryItem function
-@login_required
 @app.route('/catagories/<int:catagory_id>/<int:item_id>/update/',
            methods=['GET', 'POST'])
 def updateCatagoryItem(catagory_id, item_id):
-    updatedItem = session.query(Item).filter_by(catagory_id=catagory_id,
-                                                id=item_id).one()
+    if 'username' not in login_session:
+        return redirect('/login')
+        updatedItem = session.query(Item).filter_by(catagory_id=catagory_id,
+                                                    id=item_id).one()
     if request.method == 'POST':
         updatedItem = Item(name=request.form['name'],
                           description=request.form['description'],
@@ -249,10 +251,11 @@ def updateCatagoryItem(catagory_id, item_id):
 
 
 # Delete catagoryItem function
-@login_required
 @app.route('/catagories/<int:catagory_id>/<int:item_id>/delete/',
            methods=['GET', 'POST'])
 def deleteCatagoryItem(catagory_id, item_id):
+    if 'username' not in login_session:
+        return redirect('/login')
     deleteItem = session.query(Item).filter_by(catagory_id=catagory_id,
                                                id=item_id).one()
     if request.method == 'POST':

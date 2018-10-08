@@ -14,6 +14,7 @@ Base = declarative_base()
 class User(Base):
     __tablename__ = 'user'
     id = Column(Integer, primary_key=True)
+    name = Column(String(250))
     username = Column(String(32), index=True)
     password_hash = Column(String(64))
 
@@ -23,6 +24,15 @@ class User(Base):
     def verify_password(self, password):
         return pwd_context.verify(password, self.password_hash)
 
+    @property
+    def serialize(self):
+        # Returns object data in easily serializable format
+        return {
+            'name': self.name,
+            'password_hash': self.password_hash,
+            'id': self.id,
+        }
+
 
 class Catagory(Base):
     __tablename__ = 'catagory'
@@ -30,6 +40,16 @@ class Catagory(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(250), nullable=False)
     date = Column(TIMESTAMP, default=datetime.utcnow, nullable=False)
+    # user_id = Column(Integer, ForeignKey(user.id))
+    # user = Relationship(User)
+
+    @property
+    def serialize(self):
+        # Returns object data in easily serializable format
+        return {
+            'name': self.name,
+            'id': self.id,
+        }
 
 
 class Item(Base):
@@ -41,6 +61,8 @@ class Item(Base):
     catagory_id = Column(Integer, ForeignKey('catagory.id'))
     catagory = relationship(Catagory)
     date = Column(TIMESTAMP, default=datetime.utcnow, nullable=False)
+    # user_id = Column(Integer, ForeignKey(user.id))
+    # user = Relationship(User)
 
     @property
     def serialize(self):
