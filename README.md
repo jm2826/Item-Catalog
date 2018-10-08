@@ -26,7 +26,7 @@ https://github.com/jm2826/Item-Catalog.git
 * Type: vagrant ssh then enter
 * Type cd /vagrant
 * CD to folder where your Cloned my git repository
-* Run Python file by typing: python filename.py then enter
+* Run Python file by typing: python projectflask.py then enter
 
 ## Catalog Item App
 The server is now running on your PC on port 8000.
